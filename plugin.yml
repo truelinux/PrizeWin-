@@ -1,0 +1,14 @@
+name: PrizeWin
+author: LilCrispy2o9/Angelo Vidrio
+description: Gives a prize on command!
+version: 1.0.3
+main: PrizeWin\Main
+api: [1.9.0]
+commands:
+  pw:
+    description: Awards sender with a prize!
+    permission: pw.command
+permissions:
+  pw.command:
+    default: op
+    description: "Awards sender with a prize!"
