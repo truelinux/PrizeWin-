@@ -1,7 +1,7 @@
 name: PrizeWin
 author: LilCrispy2o9/Angelo Vidrio
 description: Gives a prize on command!
-version: 1.0.5
+version: 1.0.6
 main: PrizeWin\Main
 api: [1.10.0]
 commands:
