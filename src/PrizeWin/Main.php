@@ -1,252 +1,192 @@
 <?php
-/**
- * author: LilCrispy2o9/Angelo Vidrio
- */
-namespace iFriend;
-use pocketmine\event\Listener;
-use pocketmine\event\player\PlayerChatEvent;
-use pocketmine\command\CommandSender;
+
+
+namespace PrizeWin;
+
 use pocketmine\command\Command;
-use pocketmine\event\player\PlayerCommandPreprocessEvent;
 use pocketmine\command\CommandExecutor;
-use pocketmine\event\player\PlayerQuitEvent;
-use pocketmine\IPlayer;
-use pocketmine\Player;
-use pocketmine\plugin\PluginBase;
-use pocketmine\plugin\PluginManager;
-use pocketmine\plugin\Plugin;
-use pocketmine\utils\TextFormat;
+use pocketmine\command\CommandSender;
 use pocketmine\Server;
+use pocketmine\command\ConsoleCommandSender;
+use pocketmine\event\Listener;
+use pocketmine\Player;
+use pocketmine\permission\Permissible;
+use pocketmine\IPlayer;
+use pocketmine\utils\TextFormat;
+use pocketmine\plugin\PluginBase;
 use pocketmine\utils\Config;
-use pocketmine\event\entity\EntityDamageEvent;
-use pocketmine\event\entity\EntityDamageByEntityEvent;
-class Main extends PluginBase  implements Listener {
+class Main extends PluginBase  implements CommandExecutor {
+	
+	public $config;
 	
 	
-	public $verify;
-	
-    public function onEnable(){
+	public function onEnable() {
 		@mkdir($this->getDataFolder());
-		@mkdir($this->getDataFolder() . "Players/");
-        $this->getServer()->getPluginManager()->registerEvents($this, $this);
-		new Config($this->getDataFolder() . "config.yml", CONFIG::YAML, array(
-			"players-in-same-group-are-friendly" => true,
-			"friends-are-friendly" => true,
-		));
-		if(!$this->getServer()->getPluginManager()->getPlugin("PurePerms")) {
-			$this->getLogger()->info( TextFormat::RED . "PurePerms Not Loaded With iFriend!" );
-			$this->verify = false;
-		}else{
-			$this->pure = $this->getServer()->getPluginManager()->getPlugin("PurePerms");
-			$this->getLogger()->info( TextFormat::GREEN . "PurePerms Loaded With iFriend!" );
-			$this->verify = true;
+		if(!$this->getServer()->getPluginManager()->getPlugin("TapToDo") == true) {
+			$this->getLogger()->info( TextFormat::RED . "TapToDo Not Found! You may be using PrizeWin incorrectly!" );
 		}
-    }
+		$this->config = new Config($this->getDataFolder() . "config.yml", CONFIG::YAML, array(
+				"message-when-player-wins" => "{player} Won '{areaname}'!",
+		));
+		$this->getLogger()->info( TextFormat::GREEN . "PrizeWin - Enabled!" );
+	}
+	public function loadConfig() {
+		$this->saveDefaultConfig();
+		$this->fixConfigData ();
+	}
+	
+	
 	public function onCommand(CommandSender $sender, Command $command, $label, array $args) {
 		if($sender instanceof Player) {
-			$player = strtolower($sender->getName());
-			$playercase = $sender->getPlayer()->getName();
-				if(strtolower($command->getName()) == "friend") {
+			$player = $sender->getPlayer()->getName();
+				if(strtolower($command->getName('pw'))) {
 					if(empty($args)) {
-						$sender->sendMessage("[iFriend] Usage:\n/friend <player-name>");
-						return true;
-					}
-					if(strtolower($args[0]) !== "accept" && strtolower($args[0]) !== "decline") {
-						$friend = strtolower($args[0]);
-						$friendexact =  $this->getServer()->getPlayerExact($args[0]);
-						if(!$friendexact instanceof Player) {
-								$sender->sendMessage("[iFriend] Player not online!");
-								return true;
-						}
-						if($this->getUser($player, $friend)) {
-							$sender->sendMessage("[iFriend] '$friend' is already your friend!");
-							return true;
-						}
-						if($this->getUserTEMP($player, $friend)) {
-							$sender->sendMessage("[iFriend] You already sent an request to '$friend'");
-							return true;
-						}
-						if(!file_exists($this->getDataFolder() . "Players/" . $player . ".yml")) {
-							$this->pcreate = new Config($this->getDataFolder() . "Players/" . $player . ".yml", CONFIG::YAML);
-							$place = "TempFriends";
-							$this->pcreate->setNested($place . "." . $friend,[
-            true,
-        ]);
-							$this->pcreate->save();
-							$sender->sendMessage("[iFriend] '$friend' was asked to be\n your friend.");
-							$friendexact->sendMessage("[iFriend] '$playercase' wants to be your friend!");
-							return true;
-						}
-						if(file_exists($this->getDataFolder() . "Players/" . $player . ".yml")) {
-							$this->pcreate = new Config($this->getDataFolder() . "Players/" . $player . ".yml", CONFIG::YAML);
-							$place = "TempFriends";
-							$this->pcreate->setNested($place . "." . $friend,[
-            true,
-        ]);
-							$this->pcreate->save();
-							$sender->sendMessage("[iFriend] '$friend' was asked to be your friend.");
-							$friendexact->sendMessage("[iFriend] '$playercase' wants to be your friend!\nDo \"/friend accept $playercase\" to accept\nOR\nDo \"/friend decline $playercase\" to decline");
-							return true;
-						}
-					}elseif(strtolower($args[0]) == "accept") {
-						if(empty($args[1])) {
-							$sender->sendMessage("[iFriend] Usage:\n/friend [decline/accept] <player-name>");
-							return true;
-						}
-						$friendexact =  $this->getServer()->getPlayerExact($args[1]);
-						$getsender = strtolower($args[1]);
-						if($args[0] == "accept") {
-							if(!$friendexact instanceof Player) {
-								$sender->sendMessage("[iFriend] Player not online!");
-								return true;
-							}
-							if(!$this->getUserTEMP($getsender, $player)) {
-								$sender->sendMessage("[iFriend] Player has not sent you\n a request!");
-								return true;
-							}
-							$playerget = strtolower($sender->getName());
-							$this->removeUserTEMP($getsender, strtolower($sender->getName()));
-							$this->setUser($getsender, $player);
-							$this->setUser($player, $getsender);
-							$sender->sendMessage("[iFriend] Request Accepted!");
-							$friendexact->sendMessage("[iFriend] Your request to '$player'\nwas accepted!");
-							return true;
-						}
-					}else{
-						if($args[0] == "decline") {
-							if(empty($args[1])) {
-								$sender->sendMessage("[iFriend] Usage:\n/friend [decline/accept] <player-name>");
-								return true;
-							}
-							$friendexact =  $this->getServer()->getPlayerExact($args[1]);
-							$getsender = strtolower($args[1]);
-							if(!$friendexact instanceof Player) {
-								$sender->sendMessage("[iFriend] Player not online!");
-								return true;
-							}
-							if(!$this->getUserTEMP($getsender, $player)) {
-								$sender->sendMessage("[iFriend] Player has not sent you\n a request!");
-								return true;
-							}
-							$this->removeUserTEMP($getsender, $player);
-							$sender->sendMessage("[iFriend] Request Declined!");
-							$friendexact->sendMessage("[iFriend] Your request to '$player'\n was declined!");
-							return true;
-						}
-					}
-				}
-				if(strtolower($command->getName()) == "unfriend") {
-					if(empty($args)) {
-					$sender->sendMessage("[iFriend] Usage:\n/unfriend <player-name>");
+					$sender->sendMessage("[PrizeWin] Usage:\n/pw prize <area-name>\n/pw revoke <player> <area-name>\n/pw add <area-name>");
 					return true;
 					}
-					$friend = strtolower($args[0]);
-					$friendexact =  $this->getServer()->getPlayerExact($args[0]);
-					if(!$this->getUser($player, $friend)) {
-						$sender->sendMessage("[iFriend] '$friend' is not your friend!");
-						return true;
+					if(count($args == 2)) {
+						if($args[0] == "prize") {
+							if(empty($args[1])) {
+								$sender->sendMessage("[PrizeWin] Usage:\n/pw prize <area-name>");
+								return true;
+							}
+							if($this->getArea($args[1]) == false) {
+								$sender->sendMessage("[PrizeWin] Area not found! Case sensitive.");
+								return true;
+							}
+							if($this->playerHasWon(strtolower($player), $args[1])) {
+								$sender->sendMessage("[PrizeWin] You already won '$args[1]'!");
+								return true;
+							}
+							$this->areas = new Config($this->getDataFolder() . $args[1] . "/" . "players.yml", CONFIG::YAML);
+							$this->areasc = new Config($this->getDataFolder() . $args[1] . "/" . "settings.yml", CONFIG::YAML);
+							$getarea = $this->getArea($args[1]);
+							$name = strtolower($sender->getName());
+							$ip = $this->getServer()->getPlayer($player)->getAddress();
+							if($getarea == true) {
+								$this->areas->set((
+									"$ip"
+								), (
+									"$name"
+								)
+								);
+								$this->areas->save();
+								$areaget = $args[1];
+								$array = $this->areasc->get("Commands");
+								foreach($array as $value) {
+									$cmdpw = str_replace ( "{player}", $sender->getName(), $value );
+									$this->getServer()->dispatchCommand(new ConsoleCommandSender(), $cmdpw);
+								}
+								$winning = $this->getConfig ()->get ( "message-when-player-wins" );
+								$winning = str_replace ( "{player}", $sender->getName(), $winning );
+								$winning = str_replace ( "{areaname}", $areaget, $winning );
+								$sender->sendMessage("[PrizeWin] You Won $player !");
+								$this->getServer()->dispatchCommand(new ConsoleCommandSender(), "say $winning");
+								return true;
+							}
+						}
+						elseif($args[0] == "add") {
+							if(empty($args[1])) {
+								$sender->sendMessage("[PrizeWin] Usage:\n/pw add <area-name>");
+								return true;
+							}
+							if($this->getArea($args[1])) {
+								$sender->sendMessage("[PrizeWin] Area already exists!");
+								return true;
+							}else{
+								@mkdir($this->getDataFolder() . "$args[1]/", 0777, true);
+								$this->areasc = new Config($this->getDataFolder() . $args[1] . "/" . "settings.yml", CONFIG::YAML, array(
+									"unlimited-winning" => false,
+									"Commands" => [
+										"give {player} diamond 1",
+									]
+								));
+								$this->areasc->save();
+								$sender->sendMessage("[PrizeWin] '$args[1]' added successfully!\nPlease set commands in config.");
+							}
+						}
+						if($args[0] == "revokeall") {
+							$ip = $this->getServer()->getPlayer($player)->getAddress();
+							if(empty($args[1])) {
+								$sender->sendMessage("[PrizeWin] Usage:\n/pw revokeall <area>");
+								return true;
+							}							
+							if(!$this->getArea($args[1])) {
+								$sender->sendMessage("[PrizeWin] Area not found! Case sensitive.");
+								return true;
+							}
+							if($this->getArea($args[1])) {
+								$this->areas->setAll(null);
+								$this->areas->save();
+								$sender->sendMessage("[PrizeWin] All players on '$args[1]' have been revoked!");
+								return true;
+							}
+						}
 					}
-					if($this->getUser($player, $friend)) {
-						$this->removeUser($player, $friend);
-						$this->removeUser($friend, $player);
-						$sender->sendMessage("[iFriend] '$friend' is no longer your friend!");
+					if(count($args == 3)) {
+						if($args[0] == "revoke") {
+							if(empty($args[1])) {
+								$sender->sendMessage("[PrizeWin] Usage:\n/pw revoke <player> <area>");
+								return true;
+							}
+							if(empty($args[2])) {
+								$sender->sendMessage("[PrizeWin] Usage:\n/pw revoke <player> <area>");
+								return true;
+							}
+							
+							if(!$this->getArea($args[2])) {
+								$sender->sendMessage("[PrizeWin] Area not found! Case sensitive.");
+								return true;
+							}
+							$playername = $this->getServer()->getPlayerExact($args[1]);
+							if(!$playername instanceof Player) {
+								$sender->sendMessage("[PrizeWin] Player not online!");
+								return true;
+							}
+							if(!$this->playerHasWon($args[1], $args[2])) {
+								$sender->sendMessage("[PrizeWin] Player has not won yet!");
+								return true;
+							}
+							if($this->playerHasWon($args[1], $args[2])) {
+								$ip = $this->getServer()->getPlayer($args[1])->getAddress();
+								$this->areas->remove($ip);
+								$this->areas->save();
+								$sender->sendMessage("[PrizeWin] '$args[1]' has been revoked\nand can now win again on '$args[2]'!");
+								return true;
+							}
+						}
 					}
 				}
 		}
 	}
-	public function removeUser($player, $playerINF) {
-		$this->pget = new Config($this->getDataFolder() . "Players/" . $player . ".yml", CONFIG::YAML);
-		$this->pget->remove($playerINF);
-		$this->pget->save();
-		return true;
-		}
-	public function setUser($player, $playerINF) {
-		$this->pget = new Config($this->getDataFolder() . "Players/" . $player . ".yml", CONFIG::YAML);
-		$this->pget->set($playerINF);
-		$this->pget->save();
-		return true;
-		}
-	public function removeUserTEMP($player, $playerINF) {
-		$this->pget = new Config($this->getDataFolder() . "Players/" . $player . ".yml", CONFIG::YAML);
-		$this->pget->remove("TempFriends");
-		$this->pget->save();
-		return true;
-	}
-	public function removeLeaveTEMP($player) {
-		$this->pget = new Config($this->getDataFolder() . "Players/" . $player . ".yml", CONFIG::YAML);
-		$place = "TempFriends";
-		$this->pget->remove($place);
-		$this->pget->save();
-		return true;
-	}
-	public function getUserTEMP($player, $playerINF) {
-		$this->pget = new Config($this->getDataFolder() . "Players/" . $player . ".yml", CONFIG::YAML);
-		$place = "TempFriends";
-		$v = $this->pget->getNested($place . "." . $playerINF);
-		if($v[0] == true) {
-			return true;
-		}else{
+	public function playerHasWon($player, $args) {
+		$ip = $this->getServer()->getPlayer($player)->getAddress();
+		$this->areas = new Config($this->getDataFolder() . $args . "/" . "players.yml", CONFIG::YAML);
+		$this->areasc = new Config($this->getDataFolder() . $args . "/" . "settings.yml", CONFIG::YAML);
+		if($this->areasc->get("unlimited-winning")) {
 			return false;
 		}
-	}
-	public function getUser($player, $playerINF) {
-		$this->pget = new Config($this->getDataFolder() . "Players/" . $player . ".yml", CONFIG::YAML);
-		$place = "Friends";
-		$v = $this->pget->get($playerINF);
-		if($v) {
-			return true;
-		}else{
+		elseif(!$this->areasc->get("unlimited-winning") && !$this->areas->get("$ip")) {
 			return false;
-		}
-	}
-	public function getTEMP($player, $playerINF) {
-		$this->pget = new Config($this->getDataFolder() . "Players/" . $player . ".yml", CONFIG::YAML);
-		
-		if($this->pget->get("$playerINF")) {
-			return true;
-		}else{
-			return false;
-		}
-	}
-	public function hasFriends($player) {
-		if($this->getDataFolder() . "Players/" . $player . ".yml") {
-			return true;
-		}else{
-			return false;
-		}
-	}
-	public function onEntityDamageByEntityEvent(EntityDamageEvent $pf){
-		$reciever = $pf->getEntity()->getPlayer();
-		if($pf instanceof EntityDamageByEntityEvent) {
-			$sender = $pf->getDamager()->getPlayer();
-		}else{
-			return true;
-		}
-		if($this->verify) {
-			$levelName = null;
-			$groupName = $this->pure->getUser($reciever)->getGroup($levelName)->getName();
-			$groupName2 = $this->pure->getUser($sender)->getGroup($levelName)->getName();
-			if($groupName == $groupName2 && $this->getConfig()->get("players-in-same-group-are-friendly")) {
-				$pf->setCancelled(true);
-			}
-		}
-		$friend1 = strtolower($pf->getEntity()->getPlayer()->getName());
-		$friend2 = strtolower($pf->getDamager()->getPlayer()->getName());
-		if($this->getUser($friend1, $friend2) && $this->getConfig()->get("friends-are-friendly")) {
-			$pf->setCancelled(true);
 		}else{
 			return true;
 		}
 	}
-	public function onPlayerQuitEvent(PlayerQuitEvent $pf){
-		$player = strtolower($pf->getPlayer()->getName());
-		if($this->hasFriends($player)) {
-			$this->removeLeaveTEMP($player);
+	public function areaExists($area) {
+		if(!(file_exists($this->getDataFolder() . $area . "/" . "settings.yml"))) {
+		return false;
 		}else{
 			return true;
 		}
+	}
+	public function getArea($area) {
+		if(!$this->areaExists($area)) {
+            return false;
+		}
+		if(file_exists($this->getDataFolder() . $area . "/" . "setting.yml"));
+		return $area;
+	}
+	public function getCMD($area, $key) {
+		return $this->areas->getAll()["$area"][5];
 	}
 }
-
-
-
