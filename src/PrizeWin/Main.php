@@ -26,7 +26,7 @@ class Main extends PluginBase  implements CommandExecutor {
 			$this->getLogger()->info( TextFormat::RED . "TapToDo Not Found! You may be using PrizeWin incorrectly!" );
 		}
 		$this->config = new Config($this->getDataFolder() . "config.yml", CONFIG::YAML, array(
-				"message-when-player-wins" => "{player} Won '{areaname}'!",
+				"message-when-player-wins" => "{player} won at {areaname}!",
 		));
 		$this->getLogger()->info( TextFormat::GREEN . "PrizeWin - Enabled!" );
 	}
@@ -55,7 +55,7 @@ class Main extends PluginBase  implements CommandExecutor {
 								return true;
 							}
 							if($this->playerHasWon(strtolower($player), $args[1])) {
-								$sender->sendMessage("[PrizeWin] You already won '$args[1]'!");
+								$sender->sendMessage("[PrizeWin] You already won at $args[1]!");
 								return true;
 							}
 							$this->areas = new Config($this->getDataFolder() . $args[1] . "/" . "players.yml", CONFIG::YAML);
@@ -80,7 +80,7 @@ class Main extends PluginBase  implements CommandExecutor {
 								$winning = $this->getConfig ()->get ( "message-when-player-wins" );
 								$winning = str_replace ( "{player}", $sender->getName(), $winning );
 								$winning = str_replace ( "{areaname}", $areaget, $winning );
-								$sender->sendMessage("[PrizeWin] You Won $player !");
+								$sender->sendMessage("[PrizeWin] You won, $player !");
 								$this->getServer()->dispatchCommand(new ConsoleCommandSender(), "say $winning");
 								return true;
 							}
@@ -118,7 +118,7 @@ class Main extends PluginBase  implements CommandExecutor {
 							if($this->getArea($args[1])) {
 								$this->areas->setAll(null);
 								$this->areas->save();
-								$sender->sendMessage("[PrizeWin] All players on '$args[1]' have been revoked!");
+								$sender->sendMessage("[PrizeWin] All players at '$args[1]' have been revoked!");
 								return true;
 							}
 						}
@@ -140,7 +140,7 @@ class Main extends PluginBase  implements CommandExecutor {
 							}
 							$playername = $this->getServer()->getPlayerExact($args[1]);
 							if(!$playername instanceof Player) {
-								$sender->sendMessage("[PrizeWin] Player not online!");
+								$sender->sendMessage("[PrizeWin] Player is not online!");
 								return true;
 							}
 							if(!$this->playerHasWon($args[1], $args[2])) {
@@ -151,7 +151,7 @@ class Main extends PluginBase  implements CommandExecutor {
 								$ip = $this->getServer()->getPlayer($args[1])->getAddress();
 								$this->areas->remove($ip);
 								$this->areas->save();
-								$sender->sendMessage("[PrizeWin] '$args[1]' has been revoked\nand can now win again on '$args[2]'!");
+								$sender->sendMessage("[PrizeWin] '$args[1]' has been revoked\nand can now win again at '$args[2]'!");
 								return true;
 							}
 						}
