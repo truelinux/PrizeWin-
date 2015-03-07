@@ -4,6 +4,7 @@ description: Gives a prize on command!
 version: 1.0.6
 main: PrizeWin\Main
 api: [1.10.0]
+website: https://github.com/LilCrispy2o9/PrizeWin
 commands:
   pw:
     description: Awards sender with a prize!
